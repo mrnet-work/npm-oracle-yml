@@ -3,7 +3,12 @@ services:
     image: jc21/nginx-proxy-manager:latest
     container_name: npm
     restart: unless-stopped
-    network_mode: host
+
+    ports:
+      - "80:80"     # Public HTTP
+      - "443:443"   # Public HTTPS
+      - "81:81"     # NPM admin dashboard
+
     volumes:
       - ./data:/data
       - ./letsencrypt:/etc/letsencrypt
