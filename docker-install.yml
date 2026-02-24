@@ -1,0 +1,61 @@
+---
+- name: Install Docker Engine + Compose plugin on Oracle Linux / RHEL-like
+  hosts: all
+  become: true
+
+  vars:
+    docker_packages:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+
+  tasks:
+
+    - name: Remove conflicting packages (podman, buildah, runc if present)
+      dnf:
+        name:
+          - podman
+          - podman-docker
+          - buildah
+          - runc
+        state: absent
+      ignore_errors: true   # some may not exist
+
+    - name: Install required utils (dnf-plugins-core / dnf-utils)
+      dnf:
+        name: dnf-utils
+        state: present
+
+    - name: Add Docker GPG key
+      rpm_key:
+        key: https://download.docker.com/linux/rhel/gpg
+        state: present
+
+    - name: Add official Docker CE repository
+      yum_repository:
+        name: docker-ce
+        description: Docker CE Stable - $basearch
+        baseurl: https://download.docker.com/linux/rhel/$releasever/$basearch/stable
+        gpgcheck: true
+        gpgkey: https://download.docker.com/linux/rhel/gpg
+        state: present
+
+    - name: Install Docker packages
+      dnf:
+        name: "{{ docker_packages }}"
+        state: present
+        update_cache: true
+
+    - name: Make sure Docker service is enabled and started
+      systemd:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Add current ansible user to docker group (for non-root usage)
+      user:
+        name: "{{ ansible_user | default(lookup('env','USER')) }}"
+        groups: docker
+        append: true
